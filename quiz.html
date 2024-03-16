@@ -1,0 +1,300 @@
+<!doctype HTML>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <title>MacWizard</title>
+    <style>
+        :root {
+            --bs-primary: #dc3545;
+            /* Primary red */
+            --bs-secondary: #6c757d;
+            /* A neutral secondary color, adjust if you want a red shade */
+            --bs-danger: #dc3545;
+            /* Utilizing the primary red for 'danger' or important elements */
+            --bs-link-color: #dc3545;
+            /* Red links can be eye-catching */
+            --bs-btn-primary-bg: #dc3545;
+            /* Primary button background */
+            --bs-btn-primary-border: #dc3545;
+            /* Primary button border */
+
+        }
+
+        body {
+            background-color: #fff5f5;
+            /* A very light red/pink background for a soft look */
+        }
+
+        /* Adjusting navbar to use the primary red */
+        .navbar {
+            background-color: var(--bs-primary);
+        }
+
+        /* Custom link styling */
+        a,
+        a:hover,
+        a:focus {
+            color: var(--bs-link-color);
+        }
+
+        /* Customizing button colors */
+        .btn-primary {
+            background-color: var(--bs-btn-primary-bg);
+            border-color: var(--bs-btn-primary-border);
+        }
+
+        .btn-danger {
+            background-color: var(--bs-danger);
+            /* Using the primary red for danger buttons as well */
+        }
+
+        /* Customizing primary button hover effect */
+        .btn-primary:hover {
+            background-color: #c82333;
+            /* Darker shade of red for hover */
+            border-color: #bd2130;
+            /* Slightly darker border color for hover */
+        }
+
+        /* If you have other button styles you want to affect, replicate the pattern */
+        .btn-danger:hover {
+            background-color: #c82333;
+            /* A darker shade for hover, assuming .btn-danger is also red */
+            border-color: #bd2130;
+        }
+
+        /* Adjusting for focus and active states as well for a consistent experience */
+        .btn-primary:focus,
+        .btn-primary:active {
+            background-color: #c82333;
+            /* Keeping the focus state similar to hover */
+            border-color: #bd2130;
+        }
+
+        .btn-danger:focus,
+        .btn-danger:active {
+            background-color: #c82333;
+            /* Consistent with hover state */
+            border-color: #bd2130;
+        }
+    </style>
+</head>
+
+
+
+<body class="container">
+    <h1>Welcome to MacWizard!</h1>
+    <!-- Bootstrap Button Links -->
+    <!-- Full-width Buttons Container -->
+    <div class="row">
+        <div class="col-4">
+            <a href="index.html" class="btn btn-primary btn-block mb-2">Home</a>
+        </div>
+        <div class="col-4">
+            <a href="sandbox.html" class="btn btn-primary btn-block mb-2">Sandbox Mode</a>
+        </div>
+        <div class="col-4">
+            <a href="quiz.html" class="btn btn-primary btn-block mb-2">Quiz Mode</a>
+        </div>
+    </div>
+
+    <p class="lead">Press the key combination that matches the command shown on the screen.</p>
+    <p class="mb-3">If a released key remains in pressed key, press it again to deactivate.</p>
+
+    <h1>Your quiz flashcard: <span id="quizFlashcard"></span></h1>
+
+    <p class="font-weight-bold mt-3 mb-1" style="min-height: 2em;">Pressed keys: <span id="pressedKeys"
+            style="min-height: 2em; font-weight: 700;"></span></p>
+
+
+
+
+    <div id="pressedKeyJSON" class="p-2 bg-light border rounded" style="min-height: 3em;"></div>
+
+    <h1><span id="success"></span></h1>
+
+    <!-- Reload button -->
+    <div class="col-4">
+        <a href="quiz.html" class="btn btn-primary btn-block mb-2">New question</a>
+    </div>
+
+    <!-- Code for the Web App -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        window.addEventListener('keydown', function (event) {
+            // Prevent default browser action
+            event.preventDefault();
+
+
+            // Add the pressed key to the current set of pressed keys
+            console.log("Adding key.");
+            currentKeys.add(formatKey(event));
+            console.log("Updating key showing.");
+            updateDOMWithFormattedKeys(keysetToJSON(currentKeys));
+
+            console.log("Looking up new function...");
+            updateDOMWithJSONLookup(keysetToJSON(currentKeys));
+
+            console.log("formatKey :: " + keysetToJSON(currentKeys));
+
+            checkAnswer();
+        });
+
+        window.addEventListener('keyup', function (event) {
+            event.preventDefault();
+
+            // Remove the released key from the current set of pressed keys
+            console.log("Deleting key.");
+            currentKeys.delete(formatKey(event));
+            console.log("Updating key showing.");
+            updateDOMWithFormattedKeys(keysetToJSON(currentKeys));
+
+            console.log("Looking up new function...");
+            updateDOMWithJSONLookup(keysetToJSON(currentKeys));
+
+            console.log("formatKey :: " + keysetToJSON(currentKeys));
+
+            checkAnswer();
+        });
+
+        let flashcards; // Declare flashcards variable outside to make it accessible globally
+
+        fetch('commands.json')
+            .then(response => response.json())
+            .then(jsonData => {
+                flashcards = jsonData; // Assign the fetched jsonData to flashcards
+                console.log(flashcards); // Now flashcards contains your JSON data
+                // Further processing or function calls that use flashcards can be done here
+                updateDOMWithRandomFlashcard(); // Call the function to update the DOM here
+            })
+            .catch(error => console.error('Failed to load JSON data', error));
+
+        // Note: flashcards will be undefined here immediately after fetch is called, because fetch is asynchronous
+
+
+        // Set is the pressed keys currently being pressed down
+        let currentKeys = new Set();
+
+        function formatKey(event) {
+            // Map for renaming keys
+            const keyMap = {
+                'Meta': 'Command',
+                'Control': 'Ctrl',
+                'Shift': 'Shift',
+                'Alt': 'Alt',
+                'ARROWLEFT': 'Left Arrow'
+            };
+
+            // Check if the key is one of the modifiers and rename it; otherwise, return the key itself
+            return keyMap[event.key] || event.key.toUpperCase();
+        }
+
+
+        // Function to update the DOM with the formatKeys string.
+        function updateDOMWithFormattedKeys(formattedKeysString) {
+            // Get the DOM element where the formatted keys will be displayed
+            const pressedKeysElement = document.getElementById('pressedKeys');
+
+            // Update the text content of the element with the formatted keys string
+            pressedKeysElement.textContent = formattedKeysString;
+        }
+
+        // Function to update the DOM with the formatKeys string or an empty string if not found.
+        function updateDOMWithJSONLookup(formattedKeysString) {
+            // Get the DOM element where the formatted keys will be displayed
+            const pressedKeysElement = document.getElementById('pressedKeyJSON');
+
+            // Check if formattedKeysString is a key in flashcards JSON object
+            if (flashcards.hasOwnProperty(formattedKeysString)) {
+                // If the key exists, update the text content with the corresponding value
+                pressedKeysElement.textContent = flashcards[formattedKeysString];
+            } else {
+                // If the key doesn't exist, set the text content to an empty string
+                pressedKeysElement.textContent = '';
+            }
+        }
+
+        function getRandomFlashcard() {
+            console.log("getRandomFlashcard :: Getting random flashcard...");
+            const keys = Object.keys(flashcards);
+            console.log("getRandomFlashcard :: Keys loaded from flashcards...");
+            const randomIndex = Math.floor(Math.random() * keys.length);
+            const randomKey = keys[randomIndex];
+
+            console.log("getRandomFlashcard :: " + randomKey);
+            return flashcards[randomKey];
+        }
+
+        function updateDOMWithRandomFlashcard() {
+            randomFlashcard = getRandomFlashcard();
+            document.getElementById("quizFlashcard").innerHTML = randomFlashcard;
+        }
+
+
+        // function updatePressedKeys() {
+        //     console.log("Updating pressed keys");
+
+        //     let pressedKeysText = currentKeys.map(event => {
+        //         // Format each key using formatKey and check if there's a flashcard annotation
+        //         let formattedKey = formatKey(event); // Assuming event is suitable for formatKey
+        //         if (flashcards[formattedKey]) {
+        //             return `${formattedKey} (${flashcards[formattedKey]})`;
+        //         }
+        //         return formattedKey;
+        //     }); // Join all formatted keys and annotations with " + "
+        //     console.log(pressedKeysText);
+
+        //     // Update the DOM element with the pressed keys text
+        //     pressedKeysElement.textContent = pressedKeysText;
+        // }
+
+        function keysetToJSON(keyset) {
+            // Define an order for special keys.
+            const order = {
+                'Option': 1,
+                'Shift': 2,
+                'Command': 3
+            };
+
+            // Convert the set to an array and sort it based on the defined order and lexicographical order for other keys.
+            const sortedKeys = [...keyset].sort((a, b) => {
+                // Get order values, defaulting to a large number for non-special keys.
+                const orderA = order[a] || 4;
+                const orderB = order[b] || 4;
+
+                // If the orders are different, sort by the order values.
+                if (orderA !== orderB) {
+                    return orderA - orderB;
+                }
+
+                // If the orders are the same (i.e., both are non-special keys), sort lexicographically.
+                return a.localeCompare(b);
+            });
+
+            // Join the sorted keys with a hyphen.
+            return sortedKeys.join('-');
+        }
+
+        function checkAnswer() {
+            // Get the text content of the elements
+            const pressedKeyText = document.getElementById('pressedKeyJSON').textContent;
+            const quizFlashcardText = document.getElementById('quizFlashcard').textContent;
+
+            // Compare the texts and update the 'success' element if they match
+            if (pressedKeyText === quizFlashcardText) {
+                document.getElementById('success').textContent = 'You won!';
+            } else {
+                // Optionally, clear or update 'success' if the texts do not match
+                document.getElementById('success').textContent = ''; // or any other feedback
+            }
+        }
+
+    </script>
+</body>
+
+</html>
